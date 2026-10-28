@@ -48,7 +48,7 @@ const app=createServer(async(req,res)=>{
   if(req.method==='GET'&&path==='/api/v1/health')return send(res,200,{ok:true});
   if(req.method==='GET'&&(path==='/api/v1/ballots'||path==='/api/v1/ballots/active')){
    const ballots=await readBallots(ballotsPath);
-   return send(res,200,{ballots:(path.endsWith('/active')?ballots.filter(isActive):ballots).map(publicBallot)});
+   return send(res,200,{ballots:(path.endsWith('/active')?ballots.filter(b=>isActive(b)):ballots).map(publicBallot)});
   }
   const match=/^\/api\/v1\/ballots\/([a-z0-9_-]{1,64})\/(results|submissions)$/.exec(path);
   if(match){

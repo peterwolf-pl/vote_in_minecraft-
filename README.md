@@ -24,7 +24,7 @@ To change content, edit `site/data/ballots.json`. For `type: "vote"`, configure 
 `enabled: false` closes a ballot. `startsAt` and `endsAt` accept UTC ISO8601 values. Do not change option IDs after accepting votes.
 
 ## 2. Build Minecraft Fabric mod
-Install Java 25, Gradle 9.9.1, Minecraft 26.3 / Fabric Loader 0.20.1 and compatible Fabric API. Build:
+Install Java 25, Gradle 9.8.1, Minecraft 26.3 / Fabric Loader 0.20.1 and compatible Fabric API. Build:
 ```bash
 cd mod
 gradle build

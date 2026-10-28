@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '25' }
       - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: '9.9.1' }
+        with: { gradle-version: '9.8.1' }
       - run: gradle build --stacktrace
         working-directory: mod
       - uses: actions/upload-artifact@v4

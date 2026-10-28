@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { mkaConfig, mkaRequest, mkaSubmission, ballotFromMka } from './mka-appeal.js';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve, join } from 'node:path';
@@ -15,6 +16,15 @@ if (!apiKey || apiKey.length<24 || !secret || secret.length<24) {
   process.exit(1);
 }
 const store=new VoteStore(dataPath,secret,()=>readBallots(ballotsPath));
+const mka=mkaConfig();
+async function loadWithExternal() {
+ const ballots=await readBallots(ballotsPath);
+ return Promise.all(ballots.map(async b=>{
+   if(b.externalProvider!=='mka-appeal')return b;
+   if(!mka || !isActive(b))return null;
+   try{return ballotFromMka(b,await mkaRequest(mka));}catch(error){console.warn('MKA appeal unavailable:',error.message);return null;}
+ })).then(items=>items.filter(Boolean));
+}
 const headers={
  'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer',
  'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'",
@@ -47,21 +57,29 @@ const app=createServer(async(req,res)=>{
   }
   if(req.method==='GET'&&path==='/api/v1/health')return send(res,200,{ok:true});
   if(req.method==='GET'&&(path==='/api/v1/ballots'||path==='/api/v1/ballots/active')){
-   const ballots=await readBallots(ballotsPath);
+   const ballots=await loadWithExternal();
    return send(res,200,{ballots:(path.endsWith('/active')?ballots.filter(b=>isActive(b)):ballots).map(publicBallot)});
   }
   const match=/^\/api\/v1\/ballots\/([a-z0-9_-]{1,64})\/(results|submissions)$/.exec(path);
   if(match){
    const [,id,action]=match;
    if(req.method==='GET'&&action==='results'){
-    const b=(await readBallots(ballotsPath)).find(x=>x.id===id);
+    const b=(await loadWithExternal()).find(x=>x.id===id);
     if(!b)return send(res,404,{error:'Unknown ballot'});
+    if(b.externalProvider==='mka-appeal')return send(res,200,{ballot:publicBallot(b),total:b.total,counts:{},signatures:[]});
     return send(res,200,tally(b,await store.read()));
    }
    if(req.method==='POST'&&action==='submissions'){
     if(!authorized(req))return send(res,401,{error:'Unauthorized Minecraft server'});
     const data=await body(req);
     if(data.serverId!=null && data.serverId!==serverId)return send(res,403,{error:'Unknown server'});
+    const ballot=(await readBallots(ballotsPath)).find(x=>x.id===id);
+    if(!ballot)return send(res,404,{error:'Unknown ballot'});
+    if(!isActive(ballot))return send(res,409,{error:'Ballot closed'});
+    if(ballot.externalProvider==='mka-appeal'){
+      const submission=mkaSubmission(data);
+      return send(res,201,await mkaRequest(mka,'POST',submission));
+    }
     return send(res,201,await store.submit({...data,ballotId:id}));
    }
   }

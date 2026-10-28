@@ -16,10 +16,32 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import java.util.concurrent.CompletionException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 public final class VoteMod implements ModInitializer {
     private static VoteApi api;
     private static VoteStations stations;
+    private record PendingConsent(String ballotId, int appealId, String token, long expiresAt) {}
+    private static final Map<UUID, PendingConsent> pendingConsents = new HashMap<>();
+
+    /** Issued only while showing the privacy disclosure; tied to one player and expires after 2 minutes. */
+    static String issueConsentTicket(ServerPlayer player, String ballotId, int appealId) {
+        String token = UUID.randomUUID().toString().replace("-", "");
+        pendingConsents.put(player.getUUID(),
+            new PendingConsent(ballotId, appealId, token, System.currentTimeMillis() + 120_000));
+        return token;
+    }
+
+    private static void confirm(ServerPlayer player, String token) {
+        PendingConsent ticket = pendingConsents.remove(player.getUUID());
+        if (ticket == null || ticket.expiresAt() < System.currentTimeMillis() || !ticket.token().equals(token)) {
+            player.sendSystemMessage(Component.literal("Potwierdzenie wygasło. Otwórz apel ponownie."));
+            return;
+        }
+        submit(player, ticket.ballotId(), null, true, ticket.appealId());
+    }
 
     @Override public void onInitialize() {
         api = new VoteApi(VoteConfig.load());
@@ -47,12 +69,19 @@ public final class VoteMod implements ModInitializer {
                     .then(Commands.argument("id", StringArgumentType.word())
                         .then(Commands.argument("option", StringArgumentType.word()).executes(ctx -> {
                             submit(ctx.getSource().getPlayerOrException(),
-                                StringArgumentType.getString(ctx,"id"), StringArgumentType.getString(ctx,"option"), false);
+                                StringArgumentType.getString(ctx,"id"), StringArgumentType.getString(ctx,"option"), false, null);
                             return 1;
                         }))))
                 .then(Commands.literal("sign")
                     .then(Commands.argument("id", StringArgumentType.word()).executes(ctx -> {
-                        submit(ctx.getSource().getPlayerOrException(), StringArgumentType.getString(ctx,"id"), null, true);
+                        String id = StringArgumentType.getString(ctx,"id");
+                        if ("mka-appeal".equals(id)) show(ctx.getSource().getPlayerOrException(), id);
+                        else submit(ctx.getSource().getPlayerOrException(), id, null, true, null);
+                        return 1;
+                    })))
+                .then(Commands.literal("confirm")
+                    .then(Commands.argument("token", StringArgumentType.word()).executes(ctx -> {
+                        confirm(ctx.getSource().getPlayerOrException(), StringArgumentType.getString(ctx,"token"));
                         return 1;
                     })))
                 .then(Commands.literal("station")
@@ -107,12 +136,12 @@ public final class VoteMod implements ModInitializer {
         return s != null && s.matches("[a-z0-9][a-z0-9_-]{0,63}");
     }
 
-    private static void submit(ServerPlayer player, String ballotId, String optionId, boolean consent) {
+    private static void submit(ServerPlayer player, String ballotId, String optionId, boolean consent, Integer appealId) {
         if (!validId(ballotId) || (optionId != null && !validId(optionId))) {
             player.sendSystemMessage(Component.literal("Nieprawidłowe ID.")); return;
         }
         MinecraftServer server = player.level().getServer();
-        api.submit(ballotId, optionId, player.getUUID().toString(), player.getGameProfile().getName(), consent)
+        api.submit(ballotId, optionId, player.getUUID().toString(), player.getGameProfile().getName(), consent, appealId)
             .whenComplete((response, err) -> server.execute(() -> {
                 if (player.isRemoved()) return;
                 if (err != null) failure(player, err);

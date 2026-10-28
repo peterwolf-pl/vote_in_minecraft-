@@ -47,10 +47,15 @@ final class VoteDialogs {
         JsonObject d = base("multi_action", VoteApi.string(b,"title"));
         d.addProperty("columns", 1);
         boolean publicNick = b.has("publishSignatures") && b.get("publishSignatures").getAsBoolean();
-        String text = VoteApi.string(b,"body");
+        // Keep room for the legally important privacy disclosure, even for long appeals.
+        String text = trim(VoteApi.string(b,"body"), 2800);
+        boolean officialAppeal = b.has("appealId") && b.get("appealId").isJsonPrimitive();
+        int appealId = officialAppeal ? b.get("appealId").getAsInt() : 0;
         if ("petition".equals(type)) {
-            text += publicNick ? "\n\nPodpis spowoduje publikację nicku Minecraft na WWW."
-                : "\n\nTwój nick nie zostanie opublikowany.";
+            text += officialAppeal
+                ? "\n\nPełną treść apelu przeczytasz na mkal.pl/apel. Podpis trafi do apelu MKA. Imię i nazwisko: Twój pełny UUID. Miasto: MINECRAFT. E-mail nie jest wymagany. UUID będzie publicznie widoczny (Twój UUID: " + p.getUUID().toString() + "). Wymagana jest Twoja zgoda na przetwarzanie i publikację UUID."
+                : (publicNick ? "\n\nPodpis spowoduje publikację nicku Minecraft na WWW."
+                : "\n\nTwój nick nie zostanie opublikowany.");
         } else text += "\n\nJeden gracz może oddać tylko jeden głos.";
         JsonObject message = new JsonObject();
         message.addProperty("type", "minecraft:plain_message");
@@ -60,8 +65,10 @@ final class VoteDialogs {
         JsonArray buttons = new JsonArray();
         if ("petition".equals(type)) {
             buttons.add(button("Podpisz apel", confirm("Potwierdź podpis",
-                publicNick ? "Zgadzam się na publikację mojego nicku." : "Czy podpisujesz ten apel?",
-                "ballot sign " + id)));
+                officialAppeal
+                    ? "Zgadzam się na publiczną publikację UUID (imienia i nazwiska) i miasta MINECRAFT, bez e-maila."
+                    : (publicNick ? "Zgadzam się na publikację nicku." : "Czy podpisujesz ten apel?"),
+                officialAppeal ? "ballot confirm " + VoteMod.issueConsentTicket(p, id, appealId) : "ballot sign " + id)));
         } else if ("vote".equals(type) && b.has("options") && b.get("options").isJsonArray()) {
             int n = 0;
             for (var option : b.getAsJsonArray("options")) {

@@ -14,6 +14,7 @@ export const safeEqual = (a, b) => {
 export function validateBallot(b) {
   if (!b || !VALID_ID.test(b.id ?? '')) throw error(500, 'Invalid ballot id');
   if (!['vote','petition'].includes(b.type)) throw error(500, 'Invalid ballot type');
+  if (b.externalProvider != null && (b.externalProvider !== 'mka-appeal' || b.type !== 'petition')) throw error(500, 'Invalid external provider');
   if (typeof b.title !== 'string' || !b.title.trim() || b.title.length > 180) throw error(500, 'Invalid title');
   if (typeof b.body !== 'string' || b.body.length > 12000) throw error(500, 'Invalid body');
   if (!Array.isArray(b.options)) throw error(500, 'Missing options array');
@@ -47,7 +48,8 @@ export const isActive = (b, now=Date.now()) => b.enabled !== false &&
 export const publicBallot = b => ({
   id:b.id, type:b.type, title:b.title, body:b.body, options:b.options,
   startsAt:b.startsAt ?? null, endsAt:b.endsAt ?? null,
-  publishSignatures:b.publishSignatures === true, active:isActive(b)
+  publishSignatures:b.publishSignatures === true, active:isActive(b),
+  ...(Number.isSafeInteger(b.appealId) ? {appealId:b.appealId} : {})
 });
 export const hashVoter = (uuid, secret) => createHmac('sha256', secret).update(uuid.toLowerCase()).digest('hex');
 export function tally(b, submissions) {

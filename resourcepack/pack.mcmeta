@@ -1,0 +1,13 @@
+{
+  "pack": {
+    "description": "Vote in Minecraft: lectern with white paper. Changes ALL lecterns.",
+    "min_format": [
+      97,
+      1
+    ],
+    "max_format": [
+      97,
+      1
+    ]
+  }
+}

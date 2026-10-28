@@ -3,11 +3,17 @@
   "id": "vote_in_minecraft",
   "version": "${version}",
   "name": "Vote in Minecraft",
-  "description": "Voting and petition lectern with a Node.js web API",
-  "authors": ["Peterwolf"],
+  "description": "Server-side voting lecterns and vanilla dialogs.",
+  "authors": [
+    "Peterwolf"
+  ],
   "license": "MIT",
-  "environment": "*",
-  "entrypoints": {"main": ["pl.peterwolf.vote.VoteMod"]},
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "pl.peterwolf.vote.VoteMod"
+    ]
+  },
   "depends": {
     "fabricloader": ">=0.20.1",
     "minecraft": "~26.3",

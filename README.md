@@ -1,82 +1,62 @@
-# Vote in Minecraft
-Minecraft 26.3 Fabric mod with a custom voting lectern, plus Node.js web API and public results dashboard.
+# Vote in Minecraft - Minecraft 26.3 / Fabric Server-Side
 
-## Architecture
-- `site/data/ballots.json`: editable JSON source of ballot titles, question text, options and opening/closing dates.
-- `site/src/server.js`: built-in Node.js HTTP server and authenticated API.
-- `site/src/core.js`: validation, serialized atomic vote storage, pseudonymous identity, tallies.
-- `site/public/`: responsive results dashboard refreshing every 15 seconds.
-- `mod/`: Minecraft Fabric 26.3 / Java 25 mod, custom block model with a white written card.
-- The Minecraft server fetches ballots via GET. Players click options in in-game chat and the server sends signed-in account UUID/nickname via authenticated POST. The secret is never sent to players.
+**No client mod is required.** Players connect using a vanilla Minecraft Java 26.3 client. The Fabric mod is installed only on the dedicated server. It uses the built-in Minecraft Dialogs API and vanilla lecterns.
 
-## 1. Start web API
+## System
+
+- `mod/`: Fabric 26.3 / Java 25 dedicated-server mod with native dialogs, API access and persistent voting lectern coordinates.
+- `site/`: Node.js API, editable JSON ballots, persistent votes, public results and tests.
+- `resourcepack/`: optional white-paper lectern model. Changes the visual model of **all** vanilla lecterns when enabled; it does not change voting rules.
+
+## Start the website
+
 ```bash
 cd site
 cp .env.example .env
-# Replace MC_API_KEY and VOTER_HASH_SECRET with TWO different random secrets, >=24 characters
+# Enter distinct strong MC_API_KEY and VOTER_HASH_SECRET values
 set -a; . ./.env; set +a
 npm start
 ```
-Open the website on localhost, port 3000 by default. Node.js 20+ required. No npm dependencies.
 
-To change content, edit `site/data/ballots.json`. For `type: "vote"`, configure 2-8 `options` with unique `id` and `label`. For `type: "petition"`, use `options: []`. Setting `publishSignatures: true` publicly shows players' Minecraft nicknames, with explicit on-screen warning before they agree. This is not a legally valid electronic signature.
+Edit `site/data/ballots.json` to create votes (`type: vote`, options list) or petitions (`type: petition`, empty options). The mod fetches active ballots when a player opens a station. The site validates ballot IDs, options, closing dates and duplicate submissions. Use HTTPS in production. Keep credentials outside Git.
 
-`enabled: false` closes a ballot. `startsAt` and `endsAt` accept UTC ISO8601 values. Do not change option IDs after accepting votes.
+## Build server mod
 
-## 2. Build Minecraft Fabric mod
-Install Java 25, Gradle 9.8.1, Minecraft 26.3 / Fabric Loader 0.20.1 and compatible Fabric API. Build:
 ```bash
 cd mod
 gradle build
 ```
-Install the built JAR on the **server and clients**, with Fabric API. After first server start edit `config/vote-in-minecraft.json`:
-```json
-{
-  "apiBaseUrl": "https://votes.example.org",
-  "apiKey": "SAME_SECRET_AS_MC_API_KEY",
-  "serverId": "default",
-  "timeoutSeconds": 6
-}
-```
-Local testing can use `http://127.0.0.1:3000`. Other hosts must use HTTPS. Use `online-mode=true` on the Minecraft server for verified account UUIDs.
 
-```mcfunction
-/give @s vote_in_minecraft:ballot_lectern
-/ballot
-/ballot show town-hall
-/ballot vote town-hall library
-/ballot sign save-our-village
-```
+Install the compiled mod JAR and Fabric API only in your dedicated server's `mods/` folder. **Do not install the mod on client machines.** Start once, set `apiBaseUrl`, `apiKey` and `serverId` in `config/vote-in-minecraft.json` and restart. Set `online-mode=true` in `server.properties` to use authenticated player UUIDs.
 
-Right-click the placed lectern with an empty hand. It displays the active voting cards and clickable action controls **in Minecraft chat**. A custom full-screen GUI is not included in this first iteration.
+## Place a voting lectern
 
-## API endpoints
-| Method | Route | Authentication |
-|---|---|---|
-| GET | /api/v1/health | Public |
-| GET | /api/v1/ballots | Public |
-| GET | /api/v1/ballots/active | Public |
-| GET | /api/v1/ballots/:id/results | Public |
-| POST | /api/v1/ballots/:id/submissions | Bearer token and X-Minecraft-Server |
+1. Place any ordinary `minecraft:lectern` and leave it empty.
+2. As a server operator, look at it from at most 5 blocks.
+3. Execute `/ballot station add`. The server stores dimension and position in `config/vote-stations.json`.
+4. The player right-clicks the lectern: first a list of ballots, then a full native dialog with the text, options and confirmation.
+5. To unmark a lectern, look at it and execute `/ballot station remove`.
 
-Vote POST example:
-```json
-{"playerUuid":"d0b2ad4c-6a0a-4f8a-82cf-febcbb0cc4e9","playerName":"Builder123","optionId":"library","serverId":"default"}
-```
-For petitions omit `optionId` and set `consentToPublishName: true` to allow the publicly displayed nickname.
+Ordinary unregistered lecterns retain vanilla behavior. After destroying a registered lectern, its position remains registered. Remove the registration before reusing that position.
 
-## Tests
-```bash
-cd site && npm test
-```
-No database setup required. Submissions are in `site/data/submissions.json` (gitignored), atomically replaced. Back them up. For high traffic or multi-instance server deployments migrate to SQLite or Postgres with a UNIQUE constraint on voter+ballot. The API authenticates a trusted Minecraft server, not individual humans. The system is for community polls, **not election-grade or legally binding voting**.
+Commands for players: `/ballot`, `/ballot open`, `/ballot show <id>`, `/ballot vote <id> <option>`, `/ballot sign <id>`. The backend rechecks each submission even if the command was typed manually. Dialog confirmation is provided before voting or signing.
 
-The backend was tested locally. Minecraft compilation and block rendering still require CI and in-game validation.
+## Resource pack (optional)
 
-## Privacy and operations
-- UUIDs are stored only as HMAC digests using `VOTER_HASH_SECRET`.
-- Ordinary vote nicknames are never saved. Names on petitions are saved only with explicit consent when `publishSignatures` is enabled.
-- Keep both secrets private, serve via HTTPS, apply secure file permissions and set a retention policy for personal data.
-- A trusted Minecraft server can still fabricate submissions; protect its credentials and require online-mode authentication.
+Zip the contents of `resourcepack/` so `pack.mcmeta` is at the ZIP root. Upload that archive to a static hosting service and set `resource-pack` and `resource-pack-sha1` in `server.properties`. A player can vote without accepting it. **Visual limitation:** this sample pack replaces the base lectern model for all lecterns, not just voting stations. The server cannot add a new block model visible to a vanilla client without some client-provided assets.
 
-Licensed under MIT; see LICENSE.
+## API
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/api/v1/ballots/active` | Active vote and petition definitions |
+| GET | `/api/v1/ballots/:id/results` | Public results |
+| POST | `/api/v1/ballots/:id/submissions` | Server-authenticated submission |
+
+Only Minecraft server sends the Bearer token and `X-Minecraft-Server` header; UUIDs are HMAC-pseudonymized by Node.js. Petition names are shown only with `publishSignatures: true` and explicit player confirmation. An in-game signature is not a qualified electronic signature.
+
+## Test and limitations
+
+`cd site && npm test` runs the Node tests. Fabric compilation and in-game verification require Java 25, Gradle/Fabric 26.3 and an actual dedicated server with a vanilla 26.3 client. This PR remains draft until the Java build and both vote/petition flows are verified.
+
+The built-in Node data store is designed for a single process. For public high-volume deployment migrate votes to SQLite or PostgreSQL, and implement a retention/privacy policy. An online-mode UUID represents an authenticated game account, not a verified natural person.

@@ -33,6 +33,16 @@
       "publishSignatures": true,
       "startsAt": "2026-01-01T00:00:00Z",
       "endsAt": "2028-01-01T00:00:00Z"
+    },
+    {
+      "id": "mka-appeal",
+      "type": "petition",
+      "enabled": true,
+      "title": "Apel w obronie Muzeum Książki Artystycznej w Łodzi",
+      "body": "Treść apelu pobierana z oficjalnej strony MKA.",
+      "options": [],
+      "publishSignatures": true,
+      "externalProvider": "mka-appeal"
     }
   ]
 }

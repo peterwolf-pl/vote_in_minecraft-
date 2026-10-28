@@ -2,6 +2,7 @@ package pl.peterwolf.vote;
 
 import com.google.gson.JsonObject;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
@@ -47,14 +48,22 @@ public final class VoteMod implements ModInitializer {
                     .then(Commands.argument("id", StringArgumentType.word())
                         .then(Commands.argument("option", StringArgumentType.word()).executes(ctx -> {
                             submit(ctx.getSource().getPlayerOrException(),
-                                StringArgumentType.getString(ctx,"id"), StringArgumentType.getString(ctx,"option"), false);
+                                StringArgumentType.getString(ctx,"id"), StringArgumentType.getString(ctx,"option"), false, null);
                             return 1;
                         }))))
                 .then(Commands.literal("sign")
-                    .then(Commands.argument("id", StringArgumentType.word()).executes(ctx -> {
-                        submit(ctx.getSource().getPlayerOrException(), StringArgumentType.getString(ctx,"id"), null, true);
-                        return 1;
-                    })))
+                    .then(Commands.argument("id", StringArgumentType.word())
+                        .executes(ctx -> {
+                            submit(ctx.getSource().getPlayerOrException(),
+                                StringArgumentType.getString(ctx,"id"), null, true, null);
+                            return 1;
+                        })
+                        .then(Commands.argument("appealId", IntegerArgumentType.integer(1)).executes(ctx -> {
+                            submit(ctx.getSource().getPlayerOrException(),
+                                StringArgumentType.getString(ctx,"id"), null, true,
+                                IntegerArgumentType.getInteger(ctx,"appealId"));
+                            return 1;
+                        }))))
                 .then(Commands.literal("station")
                     .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .then(Commands.literal("add").executes(ctx -> station(ctx.getSource().getPlayerOrException(), true)))
@@ -107,12 +116,12 @@ public final class VoteMod implements ModInitializer {
         return s != null && s.matches("[a-z0-9][a-z0-9_-]{0,63}");
     }
 
-    private static void submit(ServerPlayer player, String ballotId, String optionId, boolean consent) {
+    private static void submit(ServerPlayer player, String ballotId, String optionId, boolean consent, Integer appealId) {
         if (!validId(ballotId) || (optionId != null && !validId(optionId))) {
             player.sendSystemMessage(Component.literal("Nieprawidłowe ID.")); return;
         }
         MinecraftServer server = player.level().getServer();
-        api.submit(ballotId, optionId, player.getUUID().toString(), player.getGameProfile().getName(), consent)
+        api.submit(ballotId, optionId, player.getUUID().toString(), player.getGameProfile().getName(), consent, appealId)
             .whenComplete((response, err) -> server.execute(() -> {
                 if (player.isRemoved()) return;
                 if (err != null) failure(player, err);

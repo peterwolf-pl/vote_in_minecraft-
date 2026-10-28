@@ -36,13 +36,17 @@ public final class VoteApi {
         });
     }
     public CompletableFuture<String> submit(String ballotId, String optionId, String uuid,
-                                             String playerName, boolean consent) {
+                                             String playerName, boolean consent, Integer appealId) {
         JsonObject data = new JsonObject();
         data.addProperty("playerUuid", uuid);
         data.addProperty("playerName", playerName);
         data.addProperty("serverId", config.serverId);
         if (optionId != null) data.addProperty("optionId", optionId);
-        if (consent) data.addProperty("consentToPublishName", true);
+        if (consent) {
+            data.addProperty("consentToPublishName", true);
+            data.addProperty("consentPrivacy", true);
+        }
+        if (appealId != null) data.addProperty("appealId", appealId);
         HttpRequest req = HttpRequest.newBuilder(uri("/api/v1/ballots/" + ballotId + "/submissions"))
             .timeout(Duration.ofSeconds(config.timeoutSeconds))
             .header("Authorization", "Bearer " + config.apiKey)

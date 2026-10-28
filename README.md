@@ -60,3 +60,22 @@ Only Minecraft server sends the Bearer token and `X-Minecraft-Server` header; UU
 `cd site && npm test` runs the Node tests. Fabric compilation and in-game verification require Java 25, Gradle/Fabric 26.3 and an actual dedicated server with a vanilla 26.3 client. This PR remains draft until the Java build and both vote/petition flows are verified.
 
 The built-in Node data store is designed for a single process. For public high-volume deployment migrate votes to SQLite or PostgreSQL, and implement a retention/privacy policy. An online-mode UUID represents an authenticated game account, not a verified natural person.
+
+
+## Signing the MKA public appeal from Minecraft
+
+A new ballot id `mka-appeal` delegates signatures to the real MKA appeal database.
+Configure the dedicated MKA Next.js endpoint (PR in `peterwolf-pl/obrona-mkal-pl`) first.
+In `site/.env` set `MKA_APPEAL_API_BASE_URL` (HTTPS URL of the deployment that serves /apel),
+`MKA_APPEAL_API_KEY` (32+ random characters, same as MKA `MINECRAFT_SIGNATURE_API_KEY`)
+and `MKA_APPEAL_SERVER_ID` matching MKA `MINECRAFT_SIGNATURE_SERVER_ID`.
+
+The Node.js service fetches the current published MKA appeal from
+`GET /api/minecraft/signatures` and shows it in Minecraft's native dialogs.
+A signed POST forwards only authenticated UUID, current appeal ID and explicit consent
+to the MKA backend. The Minecraft mod knows only the Node service key.
+MKA writes the signature with full_name=UUID, city=MINECRAFT and email=NULL.
+The MKA public /apel counter automatically includes it. Re-signing returns 409.
+Never forward client-controlled name/city/email to MKA.
+If MKA is unreachable or unconfigured, this special petition is hidden from the
+active list. Ordinary local ballots continue functioning.

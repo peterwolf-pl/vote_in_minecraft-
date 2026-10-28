@@ -52,7 +52,7 @@ final class VoteDialogs {
         int appealId = officialAppeal ? b.get("appealId").getAsInt() : 0;
         if ("petition".equals(type)) {
             text += officialAppeal
-                ? "\n\nPodpis trafi do apelu MKA. Imię i nazwisko: Twój pełny UUID. Miasto: MINECRAFT. E-mail nie jest wymagany. UUID będzie publicznie widoczny. Wymagana jest Twoja zgoda na przetwarzanie i publikację UUID."
+                ? "\n\nPodpis trafi do apelu MKA. Imię i nazwisko: Twój pełny UUID. Miasto: MINECRAFT. E-mail nie jest wymagany. UUID będzie publicznie widoczny (Twój UUID: " + p.getUUID().toString() + "). Wymagana jest Twoja zgoda na przetwarzanie i publikację UUID."
                 : (publicNick ? "\n\nPodpis spowoduje publikację nicku Minecraft na WWW."
                 : "\n\nTwój nick nie zostanie opublikowany.");
         } else text += "\n\nJeden gracz może oddać tylko jeden głos.";
@@ -67,7 +67,7 @@ final class VoteDialogs {
                 officialAppeal
                     ? "Zgadzam się na publiczną publikację UUID (imienia i nazwiska) i miasta MINECRAFT, bez e-maila."
                     : (publicNick ? "Zgadzam się na publikację nicku." : "Czy podpisujesz ten apel?"),
-                "ballot sign " + id + (officialAppeal ? " " + appealId : ""))));
+                officialAppeal ? "ballot confirm " + VoteMod.issueConsentTicket(p, id, appealId) : "ballot sign " + id)));
         } else if ("vote".equals(type) && b.has("options") && b.get("options").isJsonArray()) {
             int n = 0;
             for (var option : b.getAsJsonArray("options")) {

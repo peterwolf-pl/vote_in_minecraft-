@@ -60,7 +60,7 @@ export function ballotFromMka(template, remote) {
 
 export function mkaSubmission(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input) ||
-      !uuidPattern.test(input.playerUuid || '') ||
+      typeof input.playerUuid !== 'string' || !uuidPattern.test(input.playerUuid) ||
       !Number.isSafeInteger(input.appealId) || input.appealId < 1 ||
       input.optionId != null || input.consentToPublishName !== true ||
       input.consentPrivacy !== true) throw fail(400, 'Invalid or unconsented Minecraft appeal signature');

@@ -79,3 +79,5 @@ The MKA public /apel counter automatically includes it. Re-signing returns 409.
 Never forward client-controlled name/city/email to MKA.
 If MKA is unreachable or unconfigured, this special petition is hidden from the
 active list. Ordinary local ballots continue functioning.
+
+The official MKA appeal uses a short-lived, player-bound confirmation token; typing `/ballot sign mka-appeal` opens its disclosure dialog instead of directly submitting. The backend must also verify explicit consent and the current appeal ID.

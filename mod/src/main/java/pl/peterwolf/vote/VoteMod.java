@@ -2,7 +2,6 @@ package pl.peterwolf.vote;
 
 import com.google.gson.JsonObject;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
@@ -17,10 +16,32 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import java.util.concurrent.CompletionException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 public final class VoteMod implements ModInitializer {
     private static VoteApi api;
     private static VoteStations stations;
+    private record PendingConsent(String ballotId, int appealId, String token, long expiresAt) {}
+    private static final Map<UUID, PendingConsent> pendingConsents = new HashMap<>();
+
+    /** Issued only while showing the privacy disclosure; tied to one player and expires after 2 minutes. */
+    static String issueConsentTicket(ServerPlayer player, String ballotId, int appealId) {
+        String token = UUID.randomUUID().toString().replace("-", "");
+        pendingConsents.put(player.getUUID(),
+            new PendingConsent(ballotId, appealId, token, System.currentTimeMillis() + 120_000));
+        return token;
+    }
+
+    private static void confirm(ServerPlayer player, String token) {
+        PendingConsent ticket = pendingConsents.remove(player.getUUID());
+        if (ticket == null || ticket.expiresAt() < System.currentTimeMillis() || !ticket.token().equals(token)) {
+            player.sendSystemMessage(Component.literal("Potwierdzenie wygasło. Otwórz apel ponownie."));
+            return;
+        }
+        submit(player, ticket.ballotId(), null, true, ticket.appealId());
+    }
 
     @Override public void onInitialize() {
         api = new VoteApi(VoteConfig.load());
@@ -52,18 +73,17 @@ public final class VoteMod implements ModInitializer {
                             return 1;
                         }))))
                 .then(Commands.literal("sign")
-                    .then(Commands.argument("id", StringArgumentType.word())
-                        .executes(ctx -> {
-                            submit(ctx.getSource().getPlayerOrException(),
-                                StringArgumentType.getString(ctx,"id"), null, true, null);
-                            return 1;
-                        })
-                        .then(Commands.argument("appealId", IntegerArgumentType.integer(1)).executes(ctx -> {
-                            submit(ctx.getSource().getPlayerOrException(),
-                                StringArgumentType.getString(ctx,"id"), null, true,
-                                IntegerArgumentType.getInteger(ctx,"appealId"));
-                            return 1;
-                        }))))
+                    .then(Commands.argument("id", StringArgumentType.word()).executes(ctx -> {
+                        String id = StringArgumentType.getString(ctx,"id");
+                        if ("mka-appeal".equals(id)) show(ctx.getSource().getPlayerOrException(), id);
+                        else submit(ctx.getSource().getPlayerOrException(), id, null, true, null);
+                        return 1;
+                    })))
+                .then(Commands.literal("confirm")
+                    .then(Commands.argument("token", StringArgumentType.word()).executes(ctx -> {
+                        confirm(ctx.getSource().getPlayerOrException(), StringArgumentType.getString(ctx,"token"));
+                        return 1;
+                    })))
                 .then(Commands.literal("station")
                     .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .then(Commands.literal("add").executes(ctx -> station(ctx.getSource().getPlayerOrException(), true)))

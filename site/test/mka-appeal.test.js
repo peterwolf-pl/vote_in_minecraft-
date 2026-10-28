@@ -12,6 +12,7 @@ test('MKA config is disabled without secure server credentials',()=>{
 test('MKA signatures never include name, city, or email supplied by player',()=>{
   const signed=mkaSubmission({playerUuid:id.toUpperCase(),appealId:1,consentPrivacy:true,consentToPublishName:true,playerName:'Steve',city:'fake',email:'x@x.com'});
   assert.deepEqual(signed,{playerUuid:id,appealId:1,consentPrivacy:true,consentPublicDisplay:true});
+  assert.throws(()=>mkaSubmission({playerUuid:{uuid:id},appealId:1,consentPrivacy:true,consentToPublishName:true}),{status:400});
   assert.throws(()=>mkaSubmission({playerUuid:id,appealId:1,consentPrivacy:false,consentToPublishName:true}),{status:400});
   assert.throws(()=>mkaSubmission({playerUuid:id,appealId:1,consentPrivacy:true,consentToPublishName:false}),{status:400});
 });

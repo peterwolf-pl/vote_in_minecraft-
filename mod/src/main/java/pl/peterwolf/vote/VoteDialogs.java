@@ -47,12 +47,13 @@ final class VoteDialogs {
         JsonObject d = base("multi_action", VoteApi.string(b,"title"));
         d.addProperty("columns", 1);
         boolean publicNick = b.has("publishSignatures") && b.get("publishSignatures").getAsBoolean();
-        String text = VoteApi.string(b,"body");
+        // Keep room for the legally important privacy disclosure, even for long appeals.
+        String text = trim(VoteApi.string(b,"body"), 2800);
         boolean officialAppeal = b.has("appealId") && b.get("appealId").isJsonPrimitive();
         int appealId = officialAppeal ? b.get("appealId").getAsInt() : 0;
         if ("petition".equals(type)) {
             text += officialAppeal
-                ? "\n\nPodpis trafi do apelu MKA. Imię i nazwisko: Twój pełny UUID. Miasto: MINECRAFT. E-mail nie jest wymagany. UUID będzie publicznie widoczny (Twój UUID: " + p.getUUID().toString() + "). Wymagana jest Twoja zgoda na przetwarzanie i publikację UUID."
+                ? "\n\nPełną treść apelu przeczytasz na mkal.pl/apel. Podpis trafi do apelu MKA. Imię i nazwisko: Twój pełny UUID. Miasto: MINECRAFT. E-mail nie jest wymagany. UUID będzie publicznie widoczny (Twój UUID: " + p.getUUID().toString() + "). Wymagana jest Twoja zgoda na przetwarzanie i publikację UUID."
                 : (publicNick ? "\n\nPodpis spowoduje publikację nicku Minecraft na WWW."
                 : "\n\nTwój nick nie zostanie opublikowany.");
         } else text += "\n\nJeden gracz może oddać tylko jeden głos.";

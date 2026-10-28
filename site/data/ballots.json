@@ -1,0 +1,38 @@
+{
+  "ballots": [
+    {
+      "id": "town-hall",
+      "type": "vote",
+      "enabled": true,
+      "title": "Co zbudujemy na rynku?",
+      "body": "Wybierz jedną propozycję rozwoju naszego miasta. Każdy gracz może oddać jeden głos.",
+      "options": [
+        {
+          "id": "library",
+          "label": "Biblioteka"
+        },
+        {
+          "id": "park",
+          "label": "Park"
+        },
+        {
+          "id": "museum",
+          "label": "Muzeum"
+        }
+      ],
+      "startsAt": "2026-01-01T00:00:00Z",
+      "endsAt": "2028-01-01T00:00:00Z"
+    },
+    {
+      "id": "save-our-village",
+      "type": "petition",
+      "enabled": true,
+      "title": "Apel o ochronę starej wioski",
+      "body": "Podpisz apel. Twój nick Minecraft zostanie pokazany publicznie na stronie. To podpis społecznościowy, a nie prawnie wiążący podpis elektroniczny.",
+      "options": [],
+      "publishSignatures": true,
+      "startsAt": "2026-01-01T00:00:00Z",
+      "endsAt": "2028-01-01T00:00:00Z"
+    }
+  ]
+}

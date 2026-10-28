@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "vote_in_minecraft",
+  "version": "${version}",
+  "name": "Vote in Minecraft",
+  "description": "Voting and petition lectern with a Node.js web API",
+  "authors": ["Peterwolf"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {"main": ["pl.peterwolf.vote.VoteMod"]},
+  "depends": {
+    "fabricloader": ">=0.20.1",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
